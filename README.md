@@ -5,7 +5,7 @@
 설치 없이, 명령어 한 줄이면 바로 시작할 수 있어요.
 
 ```
-npx @minsu0707/sgo
+npx github:minsu0707/sgo
 ```
 
 ## 미리보기
