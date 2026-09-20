@@ -6,6 +6,13 @@ import { centerBlock } from "../ui/center.js";
 
 const MAX_QUESTIONS = 20;
 
+type Answer = "예" | "아니오" | "모름";
+
+interface Answered {
+  question: string;
+  answer: Answer;
+}
+
 export async function runComputerGuesses(): Promise<void> {
   console.log(
     centerBlock(
@@ -18,7 +25,7 @@ export async function runComputerGuesses(): Promise<void> {
 
   let candidates: WordEntry[] = [...WORD_BANK];
   const askedAttrs = new Set<AttrKey>();
-  const history: string[] = [];
+  const history: Answered[] = [];
   let count = 0;
   const tried = new Set<string>();
 
@@ -40,11 +47,14 @@ export async function runComputerGuesses(): Promise<void> {
       }
       tried.add(guess.name);
       renderScreen(history, count);
-      const confirm = await ask(centerBlock(chalk.bold(`혹시 그건 "${guess.name}" 인가요? (y/n) > `)));
+      const question = `혹시 그건 "${guess.name}" 인가요?`;
+      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${question}`)])));
+      const confirm = await ask(centerBlock(chalk.dim("(y/n) > ")));
       count += 1;
-      history.push(`Q${count}. 혹시 "${guess.name}" 인가요? → ${confirm.toLowerCase().startsWith("y") ? "예" : "아니오"}`);
+      const isYes = confirm.toLowerCase().startsWith("y");
+      history.push({ question, answer: isYes ? "예" : "아니오" });
 
-      if (confirm.toLowerCase().startsWith("y")) {
+      if (isYes) {
         renderScreen(history, count);
         console.log(centerBlock(chalk.green.bold(`\n🎉 ${count}번째 질문 만에 맞혔습니다! 정답: ${guess.name}\n`)));
         return;
@@ -56,18 +66,19 @@ export async function runComputerGuesses(): Promise<void> {
     const attribute = pickSplittingAttribute(candidates, askedAttrs);
     askedAttrs.add(attribute.key);
     renderScreen(history, count);
-    const raw = await ask(centerBlock(`${attribute.question} (y/n/모름) > `));
+    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${attribute.question}`)])));
+    const raw = await ask(centerBlock(chalk.dim("(y/n/모름) > ")));
     const normalized = raw.trim().toLowerCase();
     count += 1;
 
     if (normalized.startsWith("y") || normalized === "예") {
-      history.push(`Q${count}. ${attribute.question} → 예`);
+      history.push({ question: attribute.question, answer: "예" });
       candidates = candidates.filter((c) => c.attrs[attribute.key]);
     } else if (normalized.startsWith("n") || normalized === "아니오") {
-      history.push(`Q${count}. ${attribute.question} → 아니오`);
+      history.push({ question: attribute.question, answer: "아니오" });
       candidates = candidates.filter((c) => !c.attrs[attribute.key]);
     } else {
-      history.push(`Q${count}. ${attribute.question} → 모름`);
+      history.push({ question: attribute.question, answer: "모름" });
     }
   }
 
@@ -95,8 +106,21 @@ function pickGuess(candidates: WordEntry[], tried: Set<string>): WordEntry | und
   return candidates.find((c) => !tried.has(c.name)) ?? candidates[0];
 }
 
-function renderScreen(history: string[], count: number): void {
+function renderScreen(history: Answered[], count: number): void {
   console.clear();
-  const lines = history.length > 0 ? history : [chalk.dim("아직 질문한 내역이 없습니다.")];
+  const lines =
+    history.length > 0
+      ? history.map((entry, i) => formatHistoryLine(entry, i + 1, i === history.length - 1))
+      : [chalk.dim("아직 질문한 내역이 없습니다.")];
   console.log(centerBlock(renderBox(`sgo · 스무고개 (컴퓨터가 맞히기)  Q ${count}/${MAX_QUESTIONS}`, lines)));
+}
+
+function formatHistoryLine(entry: Answered, index: number, isCurrent: boolean): string {
+  const color = entry.answer === "예" ? chalk.green.bold : entry.answer === "아니오" ? chalk.red.bold : chalk.yellow.bold;
+  const answer = color(entry.answer);
+  const label = `Q${index}.`;
+  if (isCurrent) {
+    return `${chalk.bold(label)} ${chalk.bold(entry.question)} → ${answer}`;
+  }
+  return `${chalk.dim(label)} ${chalk.dim(entry.question)} → ${answer}`;
 }
