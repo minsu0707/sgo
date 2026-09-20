@@ -13,6 +13,7 @@
     "node": ">=18"
   },
   "scripts": {
+    "preinstall": "node scripts/banner.mjs",
     "build": "tsc -p tsconfig.json",
     "postbuild": "node -e \"require('fs').chmodSync('dist/index.js','755')\"",
     "prepare": "npm run build",
