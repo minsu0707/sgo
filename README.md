@@ -2,34 +2,22 @@
 
 > 터미널에서 바로 즐기는 스무고개 게임
 
-## 설치
+## 실행
 
-한 번만 전역 설치해두면, 그다음부터는 `sgo`만 치면 바로 실행돼요.
-
-```
-npm install -g minsu0707/sgo
-```
-
-```
-sgo
-```
-
-설치 없이 한 번만 써보고 싶다면 (매번 최신 버전을 새로 받아옵니다):
+설치 없이 명령어 한 줄로 바로 시작해요.
 
 ```
 npx minsu0707/sgo
 ```
 
-### 삭제
+코드가 바뀌지 않은 동안은 npx가 캐시를 재사용해서 두 번째 실행부터는 훨씬 빨라져요.
+
+### 저장된 설정 지우기
+
+Gemini API 키를 저장했다면, 지우고 싶을 때 (Windows):
 
 ```
-npm uninstall -g sgo
-```
-
-저장된 Gemini API 키까지 깔끔하게 지우려면 (Windows):
-
-```
-npm uninstall -g sgo && rmdir /s /q "%USERPROFILE%\.sgo"
+rmdir /s /q "%USERPROFILE%\.sgo"
 ```
 
 ## 미리보기
