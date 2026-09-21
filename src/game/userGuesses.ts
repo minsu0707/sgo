@@ -56,14 +56,21 @@ export async function runUserGuesses(): Promise<void> {
     console.log(centerBlock(chalk.dim("AI가 생각 중...")));
 
     const result = await askGemini(apiKey, input, secret.name, secret.hint);
-    if (result === "모름") {
+
+    if (!result.ok) {
+      console.log(centerBlock(chalk.red(`\nAI 호출에 실패했어요: ${result.error}\n`)));
+      await sleep(1800);
+      continue;
+    }
+
+    if (result.answer === "모름") {
       console.log(centerBlock(chalk.yellow("\nAI가 판단하기 애매한 질문이래요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
       await sleep(1200);
       continue;
     }
 
     count += 1;
-    history.push({ question: input, isYes: result === "예" });
+    history.push({ question: input, isYes: result.answer === "예" });
   }
 
   console.log(centerBlock(chalk.red.bold(`\n아쉽지만 20번째 질문까지 못 맞히셨습니다.\n정답은 "${secret.name}" 이었습니다.\n`)));
@@ -76,7 +83,7 @@ function renderScreen(history: Answered[], count: number, hint: string): void {
       ? history.map((entry, i) => formatHistoryLine(entry, i + 1, i === history.length - 1))
       : [chalk.dim("아직 질문한 내역이 없습니다.")];
 
-  const lines = [chalk.gray(`힌트: ${hint}  (AI 판정)`), "", ...historyLines];
+  const lines = [chalk.gray(`힌트: ${hint}`), "", ...historyLines];
   console.log(centerBlock(renderBox(`sgo · 스무고개  Q ${count}/${MAX_QUESTIONS}`, lines)));
 }
 

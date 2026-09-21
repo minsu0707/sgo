@@ -1,13 +1,15 @@
 const MODEL = "gemini-2.0-flash";
 
-export type GeminiAnswer = "예" | "아니오" | "모름";
+export type GeminiResult =
+  | { ok: true; answer: "예" | "아니오" | "모름" }
+  | { ok: false; error: string };
 
 export async function askGemini(
   apiKey: string,
   question: string,
   secretName: string,
   secretHint: string
-): Promise<GeminiAnswer> {
+): Promise<GeminiResult> {
   const prompt = [
     "너는 '스무고개' 게임의 출제자야. 정답 단어를 마음속에 정해두고 있고,",
     `정답은 "${secretName}" (분류: ${secretHint})이야.`,
@@ -30,17 +32,20 @@ export async function askGemini(
       }
     );
 
-    if (!res.ok) return "모름";
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      return { ok: false, error: `HTTP ${res.status}: ${body.slice(0, 200)}` };
+    }
 
     const data = (await res.json()) as {
       candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
 
-    if (text.includes("아니오") || text.includes("아니요")) return "아니오";
-    if (text.includes("예")) return "예";
-    return "모름";
-  } catch {
-    return "모름";
+    if (text.includes("아니오") || text.includes("아니요")) return { ok: true, answer: "아니오" };
+    if (text.includes("예")) return { ok: true, answer: "예" };
+    return { ok: true, answer: "모름" };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
