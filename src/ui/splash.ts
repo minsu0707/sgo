@@ -8,8 +8,13 @@ export async function showSplash(): Promise<void> {
   const banner = figlet.textSync("SGO", { font: "ANSI Shadow" });
   const colored = gradient(["#ff6ec4", "#7873f5", "#4ade80"]).multiline(banner);
 
+  const bannerLines = banner.split("\n").length;
+  const totalContentLines = bannerLines + 5; // blank, welcome, subtitle, blank, prompt
+  const rows = process.stdout.rows || 24;
+  const topPad = Math.max(0, Math.floor((rows - totalContentLines) / 2));
+
   console.clear();
-  console.log("\n");
+  console.log("\n".repeat(topPad));
   console.log(centerBlock(colored));
   console.log("\n");
   console.log(centerBlock(chalk.bold.underline("W E L C O M E   T O   S G O")));
