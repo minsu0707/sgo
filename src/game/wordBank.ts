@@ -33,24 +33,6 @@ export const ATTRIBUTES: { key: AttrKey; question: string }[] = [
   { key: "korean", question: "한국에서 유래했거나 한국적인 것인가요?" },
 ];
 
-export const KEYWORDS: Record<AttrKey, string[]> = {
-  living: ["살아", "생명체", "숨쉬"],
-  animal: ["동물"],
-  plant: ["식물", "나무", "꽃"],
-  human: ["사람", "인물", "인간"],
-  electronic: ["전자", "기계", "전기"],
-  edible: ["먹을", "먹는", "음식", "식품"],
-  fruit: ["과일"],
-  vehicle: ["탈것", "이동수단", "차", "자동차", "타는"],
-  handheld: ["손에", "들 수", "작은가", "휴대"],
-  household: ["집 안", "실내", "집에서"],
-  outdoor: ["실외", "밖에서", "야외"],
-  clothing: ["옷", "패션", "의류", "입는"],
-  abstract: ["개념", "추상", "만질 수 없"],
-  famous: ["유명", "캐릭터", "연예인"],
-  korean: ["한국"],
-};
-
 export interface WordEntry {
   name: string;
   hint: string;

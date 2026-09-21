@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { ATTRIBUTES, AttrKey, KEYWORDS, WORD_BANK, WordEntry } from "./wordBank.js";
+import { WORD_BANK, WordEntry } from "./wordBank.js";
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
 import { centerBlock } from "../ui/center.js";
@@ -17,23 +17,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function matchAttribute(question: string): AttrKey | undefined {
-  const normalized = question.trim();
-  for (const attr of ATTRIBUTES) {
-    const keywords = KEYWORDS[attr.key];
-    if (keywords.some((kw) => normalized.includes(kw))) {
-      return attr.key;
-    }
-  }
-  return undefined;
-}
-
 export async function runUserGuesses(): Promise<void> {
+  const apiKey = await resolveGeminiKey();
+
   const secret: WordEntry = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
   const history: Answered[] = [];
   let count = 0;
-
-  const apiKey = await resolveGeminiKey();
 
   console.log(centerBlock(chalk.gray(`\n힌트: ${secret.hint}\n`)));
   console.log(
@@ -43,7 +32,7 @@ export async function runUserGuesses(): Promise<void> {
   );
 
   while (count < MAX_QUESTIONS) {
-    renderScreen(history, count, secret.hint, apiKey ? "AI" : "키워드");
+    renderScreen(history, count, secret.hint);
 
     const input = await ask(centerBlock(chalk.dim("질문 > ")));
 
@@ -64,43 +53,30 @@ export async function runUserGuesses(): Promise<void> {
     }
 
     console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${input}`)])));
+    console.log(centerBlock(chalk.dim("AI가 생각 중...")));
 
-    let isYes: boolean;
-    if (apiKey) {
-      console.log(centerBlock(chalk.dim("AI가 생각 중...")));
-      const result = await askGemini(apiKey, input, secret.name, secret.hint);
-      if (result === "모름") {
-        console.log(centerBlock(chalk.yellow("\nAI가 판단하기 애매한 질문이래요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
-        await sleep(1200);
-        continue;
-      }
-      isYes = result === "예";
-    } else {
-      const attrKey = matchAttribute(input);
-      if (!attrKey) {
-        console.log(centerBlock(chalk.yellow("\n무슨 뜻인지 잘 모르겠어요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
-        await sleep(1200);
-        continue;
-      }
-      isYes = secret.attrs[attrKey];
-      await sleep(400);
+    const result = await askGemini(apiKey, input, secret.name, secret.hint);
+    if (result === "모름") {
+      console.log(centerBlock(chalk.yellow("\nAI가 판단하기 애매한 질문이래요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
+      await sleep(1200);
+      continue;
     }
 
     count += 1;
-    history.push({ question: input, isYes });
+    history.push({ question: input, isYes: result === "예" });
   }
 
   console.log(centerBlock(chalk.red.bold(`\n아쉽지만 20번째 질문까지 못 맞히셨습니다.\n정답은 "${secret.name}" 이었습니다.\n`)));
 }
 
-function renderScreen(history: Answered[], count: number, hint: string, mode: string): void {
+function renderScreen(history: Answered[], count: number, hint: string): void {
   console.clear();
   const historyLines =
     history.length > 0
       ? history.map((entry, i) => formatHistoryLine(entry, i + 1, i === history.length - 1))
       : [chalk.dim("아직 질문한 내역이 없습니다.")];
 
-  const lines = [chalk.gray(`힌트: ${hint}  (${mode} 판정)`), "", ...historyLines];
+  const lines = [chalk.gray(`힌트: ${hint}  (AI 판정)`), "", ...historyLines];
   console.log(centerBlock(renderBox(`sgo · 스무고개  Q ${count}/${MAX_QUESTIONS}`, lines)));
 }
 
