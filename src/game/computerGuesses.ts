@@ -3,6 +3,7 @@ import { ATTRIBUTES, WORD_BANK, WordEntry, AttrKey } from "./wordBank.js";
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
 import { alignToBox, centerBlock } from "../ui/center.js";
+import { celebrate } from "../ui/fireworks.js";
 
 const MAX_QUESTIONS = 20;
 
@@ -55,7 +56,7 @@ export async function runComputerGuesses(): Promise<void> {
       history.push({ question, answer: isYes ? "예" : "아니오" });
 
       if (isYes) {
-        renderScreen(history, count);
+        await celebrate();
         console.log(centerBlock(chalk.green.bold(`\n🎉 ${count}번째 질문 만에 맞혔습니다! 정답: ${guess.name}\n`)));
         return;
       }

@@ -5,6 +5,7 @@ import { renderBox } from "../ui/box.js";
 import { alignToBox, centerBlock } from "../ui/center.js";
 import { resolveGeminiKey } from "./apiKey.js";
 import { askGemini } from "./gemini.js";
+import { celebrate } from "../ui/fireworks.js";
 
 const MAX_QUESTIONS = 20;
 
@@ -32,6 +33,7 @@ export async function runUserGuesses(): Promise<void> {
     if (input.toLowerCase().startsWith("g ")) {
       const guess = input.slice(2).trim();
       if (guess === secret.name) {
+        await celebrate();
         console.log(centerBlock(chalk.green.bold(`\n🎉 ${count + 1}번째 질문에서 맞히셨습니다! 정답: ${secret.name}\n`)));
         return;
       } else {
