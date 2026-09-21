@@ -61,13 +61,13 @@ export async function runUserGuesses(): Promise<void> {
 
     const attrKey = matchAttribute(input);
     if (!attrKey) {
-      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${input}`)])));
+      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${input}`)])));
       console.log(centerBlock(chalk.yellow("\n무슨 뜻인지 잘 모르겠어요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
       await sleep(1200);
       continue;
     }
 
-    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${input}`)])));
+    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${input}`)])));
     await sleep(500);
 
     const isYes = secret.attrs[attrKey];

@@ -48,7 +48,7 @@ export async function runComputerGuesses(): Promise<void> {
       tried.add(guess.name);
       renderScreen(history, count);
       const question = `혹시 그건 "${guess.name}" 인가요?`;
-      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${question}`)])));
+      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${question}`)])));
       const confirm = await ask(centerBlock(chalk.dim("(y/n) > ")));
       count += 1;
       const isYes = confirm.toLowerCase().startsWith("y");
@@ -66,7 +66,7 @@ export async function runComputerGuesses(): Promise<void> {
     const attribute = pickSplittingAttribute(candidates, askedAttrs);
     askedAttrs.add(attribute.key);
     renderScreen(history, count);
-    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${attribute.question}`)])));
+    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${attribute.question}`)])));
     const raw = await ask(centerBlock(chalk.dim("(y/n/모름) > ")));
     const normalized = raw.trim().toLowerCase();
     count += 1;
