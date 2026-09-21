@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { ask } from "./prompt.js";
-import { centerBlock } from "./center.js";
+import { alignToBox, centerBlock } from "./center.js";
 import { renderBox } from "./box.js";
 
 export type Mode = "computer-thinks" | "computer-guesses";
@@ -16,7 +16,7 @@ export async function chooseMode(): Promise<Mode> {
   console.log("\n" + centerBlock(renderBox("sgo · 게임 선택", lines)) + "\n");
 
   while (true) {
-    const input = await ask(centerBlock(chalk.dim("번호 입력 > ")));
+    const input = await ask(alignToBox(chalk.dim("번호 입력 > ")));
     if (input === "1") return "computer-thinks";
     if (input === "2") return "computer-guesses";
     console.log(centerBlock(chalk.yellow("1 또는 2를 입력해주세요.")));

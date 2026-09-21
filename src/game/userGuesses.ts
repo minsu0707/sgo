@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { WORD_BANK, WordEntry } from "./wordBank.js";
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
-import { centerBlock } from "../ui/center.js";
+import { alignToBox, centerBlock } from "../ui/center.js";
 import { resolveGeminiKey } from "./apiKey.js";
 import { askGemini } from "./gemini.js";
 
@@ -34,7 +34,7 @@ export async function runUserGuesses(): Promise<void> {
   while (count < MAX_QUESTIONS) {
     renderScreen(history, count, secret.hint);
 
-    const input = await ask(centerBlock(chalk.dim("질문 > ")));
+    const input = await ask(alignToBox(chalk.dim("질문 > ")));
 
     if (input.toLowerCase().startsWith("g ")) {
       const guess = input.slice(2).trim();

@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { ATTRIBUTES, WORD_BANK, WordEntry, AttrKey } from "./wordBank.js";
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
-import { centerBlock } from "../ui/center.js";
+import { alignToBox, centerBlock } from "../ui/center.js";
 
 const MAX_QUESTIONS = 20;
 
@@ -49,7 +49,7 @@ export async function runComputerGuesses(): Promise<void> {
       renderScreen(history, count);
       const question = `혹시 그건 "${guess.name}" 인가요?`;
       console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${question}`)])));
-      const confirm = await ask(centerBlock(chalk.dim("(y/n) > ")));
+      const confirm = await ask(alignToBox(chalk.dim("(y/n) > ")));
       count += 1;
       const isYes = confirm.toLowerCase().startsWith("y");
       history.push({ question, answer: isYes ? "예" : "아니오" });
@@ -67,7 +67,7 @@ export async function runComputerGuesses(): Promise<void> {
     askedAttrs.add(attribute.key);
     renderScreen(history, count);
     console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${attribute.question}`)])));
-    const raw = await ask(centerBlock(chalk.dim("(y/n/모름) > ")));
+    const raw = await ask(alignToBox(chalk.dim("(y/n/모름) > ")));
     const normalized = raw.trim().toLowerCase();
     count += 1;
 

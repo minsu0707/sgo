@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { visibleWidth } from "./width.js";
 
 const BORDER_WIDTH = 60;
+export const BOX_TOTAL_WIDTH = BORDER_WIDTH + 2;
 
 export function renderBox(title: string, lines: string[]): string {
   const titleWidth = visibleWidth(title);
