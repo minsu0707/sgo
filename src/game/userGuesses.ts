@@ -24,13 +24,6 @@ export async function runUserGuesses(): Promise<void> {
   const history: Answered[] = [];
   let count = 0;
 
-  console.log(centerBlock(chalk.gray(`\n힌트: ${secret.hint}\n`)));
-  console.log(
-    centerBlock(
-      chalk.dim("질문을 자유롭게 문장으로 입력하세요. 정답을 맞히려면 'g 정답' 형식으로 입력하세요. (예: g 사과)\n")
-    )
-  );
-
   while (count < MAX_QUESTIONS) {
     renderScreen(history, count, secret.hint);
 
@@ -83,7 +76,12 @@ function renderScreen(history: Answered[], count: number, hint: string): void {
       ? history.map((entry, i) => formatHistoryLine(entry, i + 1, i === history.length - 1))
       : [chalk.dim("아직 질문한 내역이 없습니다.")];
 
-  const lines = [chalk.gray(`힌트: ${hint}`), "", ...historyLines];
+  const lines = [
+    chalk.gray(`힌트: ${hint}`),
+    chalk.dim("질문은 문장으로, 정답을 맞히려면 'g 정답' (예: g 사과)"),
+    "",
+    ...historyLines,
+  ];
   console.log(centerBlock(renderBox(`sgo · 스무고개  Q ${count}/${MAX_QUESTIONS}`, lines)));
 }
 
