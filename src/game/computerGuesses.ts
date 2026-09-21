@@ -37,7 +37,8 @@ export async function runComputerGuesses(): Promise<void> {
       return;
     }
 
-    const shouldGuessNow = candidates.length === 1 || askedAttrs.size >= ATTRIBUTES.length || count === MAX_QUESTIONS - 1;
+    const attribute = pickSplittingAttribute(candidates, askedAttrs);
+    const shouldGuessNow = candidates.length === 1 || !attribute || count === MAX_QUESTIONS - 1;
 
     if (shouldGuessNow) {
       const guess = pickGuess(candidates, tried);
@@ -64,7 +65,6 @@ export async function runComputerGuesses(): Promise<void> {
       continue;
     }
 
-    const attribute = pickSplittingAttribute(candidates, askedAttrs);
     askedAttrs.add(attribute.key);
     renderScreen(history, count);
     console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${attribute.question}`)])));
@@ -89,11 +89,12 @@ export async function runComputerGuesses(): Promise<void> {
 
 function pickSplittingAttribute(candidates: WordEntry[], asked: Set<AttrKey>) {
   const remaining = ATTRIBUTES.filter((a) => !asked.has(a.key));
-  let best = remaining[0];
+  let best: (typeof remaining)[number] | undefined;
   let bestScore = Number.POSITIVE_INFINITY;
   for (const attr of remaining) {
     const trueCount = candidates.filter((c) => c.attrs[attr.key]).length;
     const falseCount = candidates.length - trueCount;
+    if (trueCount === 0 || falseCount === 0) continue; // every candidate agrees: no information gained
     const score = Math.abs(trueCount - falseCount);
     if (score < bestScore) {
       bestScore = score;
