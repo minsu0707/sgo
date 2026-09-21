@@ -24,6 +24,10 @@ async function main() {
 }
 
 main().catch((err) => {
+  if (err?.code === "ERR_USE_AFTER_CLOSE") {
+    console.log("\n\n입력이 종료되어 게임을 마칩니다. 안녕히 가세요!\n");
+    process.exit(0);
+  }
   console.error(err);
   process.exit(1);
 });

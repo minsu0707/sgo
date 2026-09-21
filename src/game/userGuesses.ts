@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { ATTRIBUTES, WORD_BANK, WordEntry } from "./wordBank.js";
+import { ATTRIBUTES, AttrKey, KEYWORDS, WORD_BANK, WordEntry } from "./wordBank.js";
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
 import { centerBlock } from "../ui/center.js";
@@ -15,24 +15,33 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function matchAttribute(question: string): AttrKey | undefined {
+  const normalized = question.trim();
+  for (const attr of ATTRIBUTES) {
+    const keywords = KEYWORDS[attr.key];
+    if (keywords.some((kw) => normalized.includes(kw))) {
+      return attr.key;
+    }
+  }
+  return undefined;
+}
+
 export async function runUserGuesses(): Promise<void> {
   const secret: WordEntry = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
   const history: Answered[] = [];
-  const askedIndices = new Set<number>();
   let count = 0;
 
-  while (count < MAX_QUESTIONS) {
-    const remaining = ATTRIBUTES.map((a, i) => ({ ...a, originalIndex: i })).filter(
-      (a) => !askedIndices.has(a.originalIndex)
-    );
+  console.log(centerBlock(chalk.gray(`\n힌트: ${secret.hint}\n`)));
+  console.log(
+    centerBlock(
+      chalk.dim("질문을 자유롭게 문장으로 입력하세요. 정답을 맞히려면 'g 정답' 형식으로 입력하세요. (예: g 사과)\n")
+    )
+  );
 
+  while (count < MAX_QUESTIONS) {
     renderScreen(history, count, secret.hint);
 
-    const menuLines = remaining.map((a, i) => `${chalk.cyan(String(i + 1))}. ${a.question}`);
-    console.log(centerBlock(renderBox("남은 질문", menuLines)));
-    console.log(centerBlock(chalk.dim("\n번호를 입력해 질문하거나, 'g 정답' 형식으로 정답을 맞혀보세요. (예: g 사과)")));
-
-    const input = await ask(centerBlock(chalk.dim("> ")));
+    const input = await ask(centerBlock(chalk.dim("질문 > ")));
 
     if (input.toLowerCase().startsWith("g ")) {
       const guess = input.slice(2).trim();
@@ -41,25 +50,29 @@ export async function runUserGuesses(): Promise<void> {
         return;
       } else {
         console.log(centerBlock(chalk.red(`\n"${guess}"는 정답이 아닙니다.\n`)));
+        await sleep(800);
         continue;
       }
     }
 
-    const pickIdx = Number.parseInt(input, 10) - 1;
-    const attribute = remaining[pickIdx];
-    if (!attribute) {
-      console.log(centerBlock(chalk.yellow("\n올바른 번호를 입력해주세요.\n")));
+    if (!input.trim()) {
       continue;
     }
-    askedIndices.add(attribute.originalIndex);
 
-    renderScreen(history, count, secret.hint);
-    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${attribute.question}`)])));
+    const attrKey = matchAttribute(input);
+    if (!attrKey) {
+      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${input}`)])));
+      console.log(centerBlock(chalk.yellow("\n무슨 뜻인지 잘 모르겠어요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
+      await sleep(1200);
+      continue;
+    }
+
+    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`❓ ${input}`)])));
     await sleep(500);
 
-    const isYes = secret.attrs[attribute.key];
+    const isYes = secret.attrs[attrKey];
     count += 1;
-    history.push({ question: attribute.question, isYes });
+    history.push({ question: input, isYes });
   }
 
   console.log(centerBlock(chalk.red.bold(`\n아쉽지만 20번째 질문까지 못 맞히셨습니다.\n정답은 "${secret.name}" 이었습니다.\n`)));
