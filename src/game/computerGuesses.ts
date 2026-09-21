@@ -1,20 +1,20 @@
 import chalk from "chalk";
-import { ATTRIBUTES, WORD_BANK, WordEntry, AttrKey } from "./wordBank.js";
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
 import { alignToBox, centerBlock } from "../ui/center.js";
 import { celebrate } from "../ui/fireworks.js";
+import { resolveGeminiKey } from "./apiKey.js";
+import { askGeminiNextMove, HistoryEntry } from "./geminiGuesser.js";
 
 const MAX_QUESTIONS = 20;
 
-type Answer = "예" | "아니오" | "모름";
-
-interface Answered {
-  question: string;
-  answer: Answer;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function runComputerGuesses(): Promise<void> {
+  const apiKey = await resolveGeminiKey();
+
   console.log(
     centerBlock(
       chalk.gray(
@@ -24,91 +24,60 @@ export async function runComputerGuesses(): Promise<void> {
   );
   await ask(centerBlock("> "));
 
-  let candidates: WordEntry[] = [...WORD_BANK];
-  const askedAttrs = new Set<AttrKey>();
-  const history: Answered[] = [];
+  const history: HistoryEntry[] = [];
+  const wrongGuesses: string[] = [];
   let count = 0;
-  const tried = new Set<string>();
 
   while (count < MAX_QUESTIONS) {
-    if (candidates.length === 0) {
-      renderScreen(history, count);
-      console.log(centerBlock(chalk.red.bold("\n제가 졌습니다! 무엇을 생각하셨는지 알려주시겠어요? (그냥 구경만 하셔도 됩니다)\n")));
-      return;
+    renderScreen(history, count);
+    console.log(centerBlock(chalk.dim("AI가 다음 질문을 생각하는 중...")));
+
+    const move = await askGeminiNextMove(apiKey, history, wrongGuesses);
+
+    if (!move.ok) {
+      console.log(centerBlock(chalk.red(`\nAI 호출에 실패했어요: ${move.error}\n`)));
+      await sleep(1500);
+      continue;
     }
 
-    const attribute = pickSplittingAttribute(candidates, askedAttrs);
-    const shouldGuessNow = candidates.length === 1 || !attribute || count === MAX_QUESTIONS - 1;
-
-    if (shouldGuessNow) {
-      const guess = pickGuess(candidates, tried);
-      if (!guess) {
-        renderScreen(history, count);
-        console.log(centerBlock(chalk.red.bold("\n더 이상 추측할 후보가 없어요. 제가 졌습니다!\n")));
-        return;
-      }
-      tried.add(guess.name);
+    if (move.type === "guess") {
       renderScreen(history, count);
-      const question = `혹시 그건 "${guess.name}" 인가요?`;
+      const question = `혹시 그건 "${move.text}" 인가요?`;
       console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${question}`)])));
       const confirm = await ask(alignToBox(chalk.dim("(y/n) > ")));
       count += 1;
-      const isYes = confirm.toLowerCase().startsWith("y");
+      const isYes = confirm.trim().toLowerCase().startsWith("y");
       history.push({ question, answer: isYes ? "예" : "아니오" });
 
       if (isYes) {
         await celebrate();
-        console.log(centerBlock(chalk.green.bold(`\n🎉 ${count}번째 질문 만에 맞혔습니다! 정답: ${guess.name}\n`)));
+        console.log(centerBlock(chalk.green.bold(`\n🎉 ${count}번째 질문 만에 맞혔습니다! 정답: ${move.text}\n`)));
         return;
       }
-      candidates = candidates.filter((c) => c.name !== guess.name);
+      wrongGuesses.push(move.text);
       continue;
     }
 
-    askedAttrs.add(attribute.key);
     renderScreen(history, count);
-    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${attribute.question}`)])));
+    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${move.text}`)])));
     const raw = await ask(alignToBox(chalk.dim("(y/n/모름) > ")));
     const normalized = raw.trim().toLowerCase();
     count += 1;
 
-    if (normalized.startsWith("y") || normalized === "예") {
-      history.push({ question: attribute.question, answer: "예" });
-      candidates = candidates.filter((c) => c.attrs[attribute.key]);
-    } else if (normalized.startsWith("n") || normalized === "아니오") {
-      history.push({ question: attribute.question, answer: "아니오" });
-      candidates = candidates.filter((c) => !c.attrs[attribute.key]);
-    } else {
-      history.push({ question: attribute.question, answer: "모름" });
-    }
+    const answer =
+      normalized.startsWith("y") || normalized === "예"
+        ? "예"
+        : normalized.startsWith("n") || normalized === "아니오"
+          ? "아니오"
+          : "모름";
+    history.push({ question: move.text, answer });
   }
 
   renderScreen(history, count);
   console.log(centerBlock(chalk.red.bold("\n20번의 질문 안에 맞히지 못했습니다. 제가 졌습니다!\n")));
 }
 
-function pickSplittingAttribute(candidates: WordEntry[], asked: Set<AttrKey>) {
-  const remaining = ATTRIBUTES.filter((a) => !asked.has(a.key));
-  let best: (typeof remaining)[number] | undefined;
-  let bestScore = Number.POSITIVE_INFINITY;
-  for (const attr of remaining) {
-    const trueCount = candidates.filter((c) => c.attrs[attr.key]).length;
-    const falseCount = candidates.length - trueCount;
-    if (trueCount === 0 || falseCount === 0) continue; // every candidate agrees: no information gained
-    const score = Math.abs(trueCount - falseCount);
-    if (score < bestScore) {
-      bestScore = score;
-      best = attr;
-    }
-  }
-  return best;
-}
-
-function pickGuess(candidates: WordEntry[], tried: Set<string>): WordEntry | undefined {
-  return candidates.find((c) => !tried.has(c.name)) ?? candidates[0];
-}
-
-function renderScreen(history: Answered[], count: number): void {
+function renderScreen(history: HistoryEntry[], count: number): void {
   console.clear();
   const lines =
     history.length > 0
@@ -117,7 +86,7 @@ function renderScreen(history: Answered[], count: number): void {
   console.log(centerBlock(renderBox(`sgo · 스무고개 (컴퓨터가 맞히기)  Q ${count}/${MAX_QUESTIONS}`, lines)));
 }
 
-function formatHistoryLine(entry: Answered, index: number, isCurrent: boolean): string {
+function formatHistoryLine(entry: HistoryEntry, index: number, isCurrent: boolean): string {
   const color = entry.answer === "예" ? chalk.green.bold : entry.answer === "아니오" ? chalk.red.bold : chalk.yellow.bold;
   const answer = color(entry.answer);
   const label = `Q${index}.`;
