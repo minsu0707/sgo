@@ -3,6 +3,8 @@ import { ATTRIBUTES, AttrKey, KEYWORDS, WORD_BANK, WordEntry } from "./wordBank.
 import { ask } from "../ui/prompt.js";
 import { renderBox } from "../ui/box.js";
 import { centerBlock } from "../ui/center.js";
+import { resolveGeminiKey } from "./apiKey.js";
+import { askGemini } from "./gemini.js";
 
 const MAX_QUESTIONS = 20;
 
@@ -31,6 +33,8 @@ export async function runUserGuesses(): Promise<void> {
   const history: Answered[] = [];
   let count = 0;
 
+  const apiKey = await resolveGeminiKey();
+
   console.log(centerBlock(chalk.gray(`\n힌트: ${secret.hint}\n`)));
   console.log(
     centerBlock(
@@ -39,7 +43,7 @@ export async function runUserGuesses(): Promise<void> {
   );
 
   while (count < MAX_QUESTIONS) {
-    renderScreen(history, count, secret.hint);
+    renderScreen(history, count, secret.hint, apiKey ? "AI" : "키워드");
 
     const input = await ask(centerBlock(chalk.dim("질문 > ")));
 
@@ -59,18 +63,29 @@ export async function runUserGuesses(): Promise<void> {
       continue;
     }
 
-    const attrKey = matchAttribute(input);
-    if (!attrKey) {
-      console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${input}`)])));
-      console.log(centerBlock(chalk.yellow("\n무슨 뜻인지 잘 모르겠어요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
-      await sleep(1200);
-      continue;
+    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${input}`)])));
+
+    let isYes: boolean;
+    if (apiKey) {
+      console.log(centerBlock(chalk.dim("AI가 생각 중...")));
+      const result = await askGemini(apiKey, input, secret.name, secret.hint);
+      if (result === "모름") {
+        console.log(centerBlock(chalk.yellow("\nAI가 판단하기 애매한 질문이래요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
+        await sleep(1200);
+        continue;
+      }
+      isYes = result === "예";
+    } else {
+      const attrKey = matchAttribute(input);
+      if (!attrKey) {
+        console.log(centerBlock(chalk.yellow("\n무슨 뜻인지 잘 모르겠어요. 다른 표현으로 다시 질문해주세요! (질문 횟수에 포함되지 않아요)\n")));
+        await sleep(1200);
+        continue;
+      }
+      isYes = secret.attrs[attrKey];
+      await sleep(400);
     }
 
-    console.log(centerBlock(renderBox("지금 질문", [chalk.bold.yellow(`> ${input}`)])));
-    await sleep(500);
-
-    const isYes = secret.attrs[attrKey];
     count += 1;
     history.push({ question: input, isYes });
   }
@@ -78,14 +93,14 @@ export async function runUserGuesses(): Promise<void> {
   console.log(centerBlock(chalk.red.bold(`\n아쉽지만 20번째 질문까지 못 맞히셨습니다.\n정답은 "${secret.name}" 이었습니다.\n`)));
 }
 
-function renderScreen(history: Answered[], count: number, hint: string): void {
+function renderScreen(history: Answered[], count: number, hint: string, mode: string): void {
   console.clear();
   const historyLines =
     history.length > 0
       ? history.map((entry, i) => formatHistoryLine(entry, i + 1, i === history.length - 1))
       : [chalk.dim("아직 질문한 내역이 없습니다.")];
 
-  const lines = [chalk.gray(`힌트: ${hint}`), "", ...historyLines];
+  const lines = [chalk.gray(`힌트: ${hint}  (${mode} 판정)`), "", ...historyLines];
   console.log(centerBlock(renderBox(`sgo · 스무고개  Q ${count}/${MAX_QUESTIONS}`, lines)));
 }
 
