@@ -27,7 +27,11 @@ export async function askGemini(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 10 },
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 200,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       }
     );
@@ -38,9 +42,14 @@ export async function askGemini(
     }
 
     const data = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
     };
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text?.trim() ?? "";
+
+    if (!text) {
+      return { ok: false, error: `빈 응답 (finishReason: ${candidate?.finishReason ?? "unknown"})` };
+    }
 
     if (text.includes("아니오") || text.includes("아니요")) return { ok: true, answer: "아니오" };
     if (text.includes("예")) return { ok: true, answer: "예" };
